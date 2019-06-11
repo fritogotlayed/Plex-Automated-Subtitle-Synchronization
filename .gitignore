@@ -59,3 +59,10 @@ typings/
 
 # next.js build output
 .next
+
+# editors
+.vscode/
+
+# local env configs
+env_configs/
+.env

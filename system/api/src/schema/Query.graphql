@@ -1,0 +1,9 @@
+# import TvDbShow from "TvDbShow.graphql"
+# import TvDbEpisode from "TvDbEpisode.graphql"
+# import SubtitleMetadata from "SubtitleMetadata.graphql"
+
+type Query {
+    searchShow(filter: String!): [TvDbShow!]!
+    listShowEpisodes(id: Int!): [TvDbEpisode!]!
+    getSubtitles(showId: Int!, episodeId: Int!, language: String, fileHash: String): SubtitleMetadata
+}

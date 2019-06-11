@@ -1,0 +1,11 @@
+type TvDbShow {
+    aliases: [String!]
+    banner: String
+    firstAired: String
+    id: ID!
+    name: String
+    network: String
+    overview: String
+    slug: String
+    status: String
+}

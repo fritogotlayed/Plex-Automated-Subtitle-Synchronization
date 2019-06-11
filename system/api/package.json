@@ -1,0 +1,31 @@
+{
+  "name": "pass-api",
+  "version": "1.0.0",
+  "description": "Plex Automated Subtitle Synchronization API",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon ./src/server.js",
+    "test": "echo 'tests not available'; exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization/issues"
+  },
+  "homepage": "https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization#readme",
+  "dependencies": {
+    "@maddonkeysoftware/mds-sdk-node": "0.0.4",
+    "dotenv": "^8.2.0",
+    "graphql-yoga": "^1.18.3",
+    "jsonwebtoken": "^8.5.1",
+    "merge-graphql-schemas": "^1.7.6",
+    "node-fetch": "^2.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.2"
+  }
+}

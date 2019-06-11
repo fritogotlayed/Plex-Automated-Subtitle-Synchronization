@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+
+/****
+ * This script is meant to be used for development purposes only. Production level systems are
+ * assumed to populate their environment variables in ways other than npm's dotenv.
+ ****/
+
+const fs = require('fs')
+
+if (process.argv.length < 3) {
+  console.log("Please provide an environment argument")
+  return
+}
+
+fs.copyFile('./env_configs/' + process.argv[2], './.env', (err) => {
+  if (err) {
+    console.log('A problem was encountered while attempting to set your environment.')
+    throw err
+  }
+  else console.log('Your environment has been setup successfully.');
+})

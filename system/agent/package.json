@@ -1,0 +1,27 @@
+{
+  "name": "pass-agent",
+  "version": "1.0.0",
+  "description": "Plex Automated Subtitle Synchronization Agent",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization/issues"
+  },
+  "homepage": "https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization#readme",
+  "dependencies": {
+    "@maddonkeysoftware/mds-sdk-node": "0.0.4",
+    "crypto": "^1.0.1",
+    "download": "^7.1.0",
+    "got": "^9.6.0",
+    "md5-file": "^4.0.0",
+    "opensubtitles-api": "^5.0.1"
+  }
+}
