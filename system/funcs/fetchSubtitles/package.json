@@ -1,0 +1,18 @@
+{
+  "name": "pass-fetch-subtitles",
+  "version": "1.0.0",
+  "main": "func.js",
+  "description": "",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fnproject/fdk": "0.0.15",
+    "@maddonkeysoftware/mds-sdk-node": "0.0.4",
+    "bunyan": "^1.8.12",
+    "download": "^7.1.0",
+    "got": "^10.6.0",
+    "graphql-request": "^1.8.2",
+    "lodash": "^4.17.15",
+    "opensubtitles-api": "^5.1.0"
+  }
+}

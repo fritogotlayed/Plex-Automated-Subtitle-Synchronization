@@ -1,13 +1,47 @@
-const fetch = require('node-fetch')
-const mds = require('@maddonkeysoftware/mds-sdk-node');
+async function getShowDetails(parent, args, context, inf) {
+  if (args.showId) {
+    return context.TvDbRepository.getShow(args.showId);
+  }
 
-async function searchShow(parent, args, context, inf) {
+  return;
+}
+
+async function searchMovie(parent, args, context, inf) {
   if (args.filter) {
     let filter = encodeURIComponent(args.filter)
-    return context.TvDbRepository.searchShow(filter)
+    return context.MovieRepository.searchMovie(filter)
   }
 
   return []
+}
+
+async function searchShow(parent, args, context, inf) {
+  try {
+    if (args.filter) {
+      let filter = encodeURIComponent(args.filter)
+      return context.TvDbRepository.searchShow(filter)
+    }
+  } catch (err) {
+    context.logger.error({ err }, 'An error occurred while searching for shows')
+  }
+
+  return []
+}
+
+async function getEpisodeDetails(parent, args, context, inf) {
+  if (args.episodeId) {
+    return context.TvDbRepository.getEpisode(args.episodeId);
+  }
+
+  return;
+}
+
+async function getMovieDetails(parent, args, context, inf) {
+  if (args.imdbId) {
+    return context.MovieRepository.getMovie(args.imdbId);
+  }
+
+  return;
 }
 
 async function listShowEpisodes(parent, args, context, inf) {
@@ -19,39 +53,38 @@ async function listShowEpisodes(parent, args, context, inf) {
 }
 
 async function getSubtitles(parent, args, context, inf) {
-  const fsClient = mds.getFileServiceClient();
-  const qsClient = mds.getQueueServiceClient();
-  let language = (args.language || "en").toLowerCase().substring(0, 2);
-  let basePath = `subtitles/${args.showId}/${args.episodeId}/${language}`;
-  let subPath;
-
-  try {
-    let contents = await fsClient.listContainerContents(basePath);
-    if (args.fileHash && contents.directories.indexOf(args.fileHash) > -1) {
-      contents = await fsClient.listContainerContents(`${basePath}/${args.fileHash}`)
-      subPath = `${args.fileHash}\${content.files[0]}`
-    } else {
-      subPath = contents.files[0];
+  const mediaTypeHandlers = {
+    'movie': {
+      requestHandler: context.SubtitleRepository.getMovieSubtitles.bind(context.SubtitleRepository),
+      errorHandler: null
+    },
+    'show': {
+      requestHandler: context.SubtitleRepository.getShowSubtitles.bind(context.SubtitleRepository),
+      errorHandler: null
     }
-  } catch (e) {
-    await qsClient.enqueueMessage(process.env.PASS_SUBTITLES_NEEDED_QUEUE, {
-      showId: args.showId,
-      episodeId: args.episodeId,
-      language,
-      fileHash: args.fileHash
-    });
-    throw new Error('Could not locate suitable subtitle file.')
+  };
+
+  let mediaType = args.mediaType.toLowerCase();
+
+  const expectedMediaTypes = Object.keys(mediaTypeHandlers);
+  if (expectedMediaTypes.indexOf(mediaType) == -1) {
+    throw new Error(`mediaType is unexpected value. Found "${mediaType}" but expected one of the following: ${expectedMediaTypes.join(', ')}`)
   }
 
-  return {
-    showId: args.showId,
-    episodeId: args.episodeId,
-    downloadPath: `${process.env.MDS_FS_URL}/download/${basePath}/${subPath}`
-  };
+  try {
+    return mediaTypeHandlers[mediaType].requestHandler(args);
+  } catch (err) {
+    context.logger.error({ err }, 'An error occurred while fetching subtitles.')
+    throw new Error('Unable to fetch subtitles at this time. Please try again later.')
+  }
 }
 
 module.exports = {
   searchShow,
+  searchMovie,
   listShowEpisodes,
-  getSubtitles
+  getSubtitles,
+  getShowDetails,
+  getMovieDetails,
+  getEpisodeDetails
 }

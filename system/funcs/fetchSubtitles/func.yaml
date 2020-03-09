@@ -1,0 +1,20 @@
+schema_version: 20180708
+name: pass-fetch-subtitles-faas-handler
+version: 0.0.23
+runtime: node
+entrypoint: node func.js
+timeout: 300
+config:
+  MDS_FS_URL: http://192.168.5.90:8083
+  MDS_LOG_URL: http://192.168.5.90:6002
+  MDS_PASS_URL: http://192.168.5.90:9100
+  MDS_QS_URL: http://192.168.5.90:8081
+  MDS_SM_URL: http://192.168.5.90:8082
+  PASS_OPEN_SUBTITLES_PASS: 3Pupal-0trail-Swart0-array
+  PASS_OPEN_SUBTITLES_USER: fritogotlayed
+  PASS_SUBTITLES_CONTAINER: subtitles
+  PASS_SUBTITLES_NEEDED_QUEUE: pass-subtitles-needed
+  PASS_SUBTITLES_NEEDED_QUEUE_DLQ: pass-subtitles-needed-dlq
+  TV_DB_API_KEY: 4D4B3BC9883B12E6
+  TV_DB_USER_KEY: 2061EA4B93FE1007
+  TV_DB_USERNAME: fritogotlayed

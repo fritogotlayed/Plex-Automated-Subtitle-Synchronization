@@ -1,9 +1,10 @@
-# import TvDbShow from "TvDbShow.graphql"
-# import TvDbEpisode from "TvDbEpisode.graphql"
-# import SubtitleMetadata from "SubtitleMetadata.graphql"
 
 type Query {
+    getShowDetails(showId: Int!): TvDbShow
+    getEpisodeDetails(episodeId: Int!): TvDbEpisode
+    searchMovie(filter: String!): [MovieSearchResult!]!
+    getMovieDetails(imdbId: String!): MovieMetadata
     searchShow(filter: String!): [TvDbShow!]!
     listShowEpisodes(id: Int!): [TvDbEpisode!]!
-    getSubtitles(showId: Int!, episodeId: Int!, language: String, fileHash: String): SubtitleMetadata
+    getSubtitles(mediaType: String!, movieId: String, showId: Int, episodeId: Int, language: String, fileHash: String): SubtitleMetadata
 }

@@ -1,15 +1,21 @@
-const md5File = require('md5-file/promise');
-const download = require('download');
-const got = require('got');
-const OS = require('opensubtitles-api');
-const crypto = require('crypto');
-const util = require('util');
-const fs = require('fs');
+const _ = require('lodash');
+const fileDiscovery = require('./file-discovery');
+const mdsSdk = require('@maddonkeysoftware/mds-sdk-node');
 const path = require('path');
+const playground = require('./playground');
+const md5File = require('md5-file/promise');
+const { GraphQLClient } = require('graphql-request');
 
-const diffHumanReadable = (dt1, dt2) => {
+// const main = () => testGetFileHash();
+// const main = () => testDownloadFile();
+// const main = () => testPlexNowPlaying();
+// const main = () => testSubtitlesSearch();
+// const main = () => playground.testScanDirectory();
+const graphQLClient = new GraphQLClient(process.env.MDS_PASS_URL);
+
+const diffBetweenTimestamps = (dt1, dt2) => {
   // get total seconds between the times
-  let delta = Math.abs(dt1 - dt2) / 1000;
+  let delta = Math.abs(dt2 - dt1) / 1000;
 
   // calculate (and subtract) whole days
   let days = Math.floor(delta / 86400);
@@ -25,6 +31,17 @@ const diffHumanReadable = (dt1, dt2) => {
 
   // what's left is seconds
   let seconds = Math.floor(delta % 60); // in theory the modulus is not required
+
+  return {
+    days,
+    hours,
+    minutes,
+    seconds
+  };
+};
+
+const diffHumanReadable = (dt1, dt2) => {
+  const { days, hours, minutes, seconds } = diffBetweenTimestamps(dt1, dt2);
 
   let output = '';
   if (days) {
@@ -44,130 +61,199 @@ const diffHumanReadable = (dt1, dt2) => {
   return output;
 };
 
+const enqueueFiles = (queueName, metadata, type) => {
+  // directory, subDirectories, files
+  const qsClient = mdsSdk.getQueueServiceClient();
 
-const debugHashFile = (file) => {
-  const start = new Date();
-  return md5File(file)
-    .then((hash) => console.log(`Name: ${file}\nHash: ${hash}\nTime: ${diffHumanReadable(start, new Date())}`))
-    .catch((err) => console.dir(err));
+  return Promise.all(metadata.subDirectories.map(d => enqueueFiles(queueName, d)))
+    .then(() => Promise.all(metadata.files.map(f => qsClient.enqueueMessage(queueName, { file: path.join(metadata.directory, f.name), type }))))
 };
 
-const testGetFileHash = () => {
-  const files = [
-    '/mnt/XBMC/TV\ Shows/Star\ Trek\ Enterprise/Season\ 1/01\ -\ Broken\ Bow.m4v',
-    '/home/malline/Videos/Star\ Trek\ Enterprise/Season\ 1/01\ -\ Broken\ Bow.m4v',
-    '/home/malline/Videos/Star\ Trek\ Voyager/Season\ 1/01\ -\ Caretaker.m4v',
-  ];
+const parsePathForMovieName = (filePath) => {
+  const regex = new RegExp(/.*\/(.*) \(\d{4}\)\..{3,}/g);
+  let input = filePath;
+  let matches = regex.exec(input);
+  if (matches) {
+    return matches[1];
+  } else {
+    let regex2 = /.*\/(.*)\..{3,}/g;
+    matches = regex2.exec(input);
+    return matches[1];
+  }
+}
 
-  return Promise.all(
-    files.map(f => debugHashFile(f))
-  );
+const getMovieId = (filePath) => {
+  const filter = parsePathForMovieName(filePath);
+  const query = `query {
+    searchMovie(filter: "${filter}") {
+      title
+      imdbID
+      year
+    }
+  }`;
+  return graphQLClient.request(query)
+    .then(resp => resp.searchMovie[0])
+    .catch(err => console.dir(err));
+}
+
+const parsePathForShowDetails = (filePath) => {
+  // https://regex101.com/r/3C4y9b/3/
+  const regex = new RegExp(/.*\/(.*)\/Season (\d{0,5})\/(\d{0,5}) - .*\..{3,}|.*\/(.*)\/.*\.s(\d{0,5})e(\d{0,5})\..{3,}/g);
+  let input = filePath;
+  let matches = regex.exec(input);
+  if (matches) {
+    return {
+      show: matches[1] || matches[4],
+      season: Number(matches[2] || matches[5]),
+      episode: Number(matches[3] || matches[6])
+    };
+  } else {
+    // TODO: Implement
+    let regex2 = /.*\/(.*)\..{3,}/g;
+    matches = regex2.exec(input);
+    return;
+  }
+}
+
+const getEpisodeId = (filePath) => {
+  const details = parsePathForShowDetails(filePath);
+  if (!details) return Promise.reject('Could not determine show details.');
+
+  const query = `query {
+    searchShow(filter: "${details.show}") {
+      id
+    }
+  }`;
+  return graphQLClient.request(query)
+    .then(resp => resp.searchShow[0])
+    .catch(err => console.dir(err))
+    .then((data) => {
+      const query = `query {
+        listShowEpisodes(id: ${data.id}) {
+          id
+          episodeName
+          airedSeason
+          airedEpisodeNumber
+          dvdSeason
+          dvdEpisodeNumber
+        }
+      }`;
+      return Promise.all([ data.id, graphQLClient.request(query) ]);
+    })
+    .then(([ showId, resp ]) => {
+      let predicate = { dvdSeason: Number(details.season), dvdEpisodeNumber: Number(details.episode) };
+      let results = _.filter(resp.listShowEpisodes, predicate);
+
+      if (results.length === 0) {
+        predicate = { airedSeason: Number(details.season), airedEpisodeNumber: Number(details.episode) };
+        results = _.filter(resp.listShowEpisodes, predicate);
+      }
+
+      return { showId, id: results[0].id };
+    })
+    .catch(err => console.dir(err));
 };
 
-const testDownloadFile = () => {
-  // const url = 'http://ipv4.download.thinkbroadband.com/200MB.zip'
-  // const out = 'output.zip'
-  const url = 'https://dl.opensubtitles.org/en/download/src-api/vrf-19ad0c58/sid-BfZNJD,G6OpUL3CFqL3B4qZd5,4/file/1951730588';
-  const out = 'Star.Trek.Enterprise.S01E01E02.Broken.Bow.WS.AC3.DVDRip.XviD-MEDiEVAL.en.srt'
-  return download(url, '.', { filename: out })
-    .then(() => console.log('done'));
-};
-
-const testPlexNowPlaying = () => {
-  const url = 'http://192.168.5.90:32400/status/sessions';
-  const headers = { headers: { 'Accept': 'application/json'} }
-  return got(url, headers)
-    .then((resp) => resp.body)
-    .then((body) => console.dir(JSON.parse(body), { depth: 10 }))
-};
-
-const testSubtitlesSearch = () => {
-  // const md5pass = crypto.createHash('md5').update('3Pupal-0trail-Swart0-array').digest('hex')
-  const md5pass = '3Pupal-0trail-Swart0-array';
-  const OpenSubtitles = new OS({
-    useragent: 'PASSAgent',
-    username: 'fritogotlayed',
-    password: md5pass,
-    ssl: true
- });
- return OpenSubtitles.login()
-  .then((res) => {
-    console.log(`Token: ${res.token}`)
-  })
-  .then(() => {
-    return OpenSubtitles.search({
-      sublanguageid: 'en',
-      query: 'enterprise broken bow'
-    });
-  })
-  .then((results) => console.dir(results.en, { depth: 10 }))
-  .catch((err) => console.dir(err, { depth: 5 }));
-};
-
-const testScanDirectory = () => {
-  const readdir = util.promisify(fs.readdir);
-  const lstat = util.promisify(fs.lstat);
-
-  const parts = [
-    '/mnt/XBMC',
-    'TV Shows',
-    'The Big Bang Theory',
-  ];
-
-  return readdir(path.join(...parts))
-    .then((contents) => {
-      const ignoreDirs = [
-        '#recycle',
-        '@eaDir',
-        '.actors',
-        'extrafanart',
-      ];
-      const filterDirs = (name) => ignoreDirs.indexOf(name) === -1;
-
-      const children = contents
-        .filter(filterDirs)
-        .map((e) => lstat(path.join(...parts, e)).then((r) => ({ path: e, stats: r })));
-
-      return Promise.all(children)
-        .then((items) => {
-          const ignoreExtensions = [ '.nfo', '.jpg', '.srt', '.png', '.db' ];
-          const filterFile = (name) => {
-            const ignored = ignoreExtensions.some((v) => name.path.indexOf(v) !== -1);
-            console.dir({ path: name.path, ignored});
-            return !ignored;
-          };
-          /*
-          const filterFile = (name) => {
-            const safe = supportedVideoExtensions.some((v) => name.path.indexOf(v) !== -1);
-            // console.dir({ path: name.path, safe});
-            return safe;
-          };
-          */
-          const directories = items.filter((e) => e.stats.isDirectory()).map((e) => e.path);
-          const files = items.filter((e) => e.stats.isFile())
-            .filter(filterFile)
-            .map((e) => e.path);
-
-          return {
-            directories,
-            files
-          };
+const requestSubtitleFile = (meta) => {
+  return Promise.resolve()
+    .then(() => {
+      switch (meta.type) {
+        case 'show':
+          return getEpisodeId(meta.file)
+            .then(elem => `showId: ${elem.showId}, episodeId: ${elem.id}`);
+        case 'movie':
+          return getMovieId(meta.file)
+            .then(elem => `movieId: "${elem.imdbID}"`);
+        default:
+          break;
+      }
+    })
+    .then((identifierBlock) => {
+      const query = `query {
+        getSubtitles(mediaType: "${meta.type}", fileHash: "${meta.hash}", ${identifierBlock} ) {
+          downloadPath
+        }
+      }`;
+      return graphQLClient.request(query)
+        .catch((err) => {
+          if (_.get(err, 'response.errors[0].message') !== 'Could not locate suitable subtitle file.'){
+            console.dir(err);
+          }
         });
     })
-    .then((body) => console.dir(body, { depth: 10 }))
-    .catch((err) => {
-      console.dir(err);
-    });
+}
+
+const getFileHash = (filePath) => {
+  //return md5File(filePath);
+  return Promise.resolve('file hash skipped.');
+}
+
+const processQueue = (queueName, qsClient) => {
+  const processMessage = (message) => {
+    const msg = JSON.parse(message.message);
+    return Promise.resolve(new Date())
+      .then((start) => getFileHash(msg.file).then((hash) => ({ start, hash })))
+      .then((meta) => { console.log(`${msg.file} [${diffHumanReadable(meta.start, new Date())}]: ${meta.hash}`); return meta; })
+      .then((meta) => requestSubtitleFile(_.merge({}, meta, msg)))
+      .catch((err) => console.dir(err))
+      .then(() => message);
+  };
+
+  const deleteMessage = (message) => qsClient.deleteMessage(queueName, message.id)
+    .then(() => true);
+
+  return qsClient.fetchMessage(queueName)
+    .then((message) => message ? processMessage(message) : undefined)
+    .then((message) => message ? deleteMessage(message) : undefined)
+    .then((processed) => processed ? processQueue(queueName, qsClient) : undefined);
 };
 
-// const main = () => testGetFileHash();
-// const main = () => testDownloadFile();
-// const main = () => testPlexNowPlaying();
-// const main = () => testSubtitlesSearch();
-const main = () => testScanDirectory();
+const scanDirectory = (queue, dir) => fileDiscovery.scanDirectory(dir.path)
+  .then((metadata) => enqueueFiles(queue, metadata, dir.type));
+
+const scanDirectories = (queue, directories) => Promise.all(directories.map(d => scanDirectory(queue, d)));
+
+const regexTest = () => {
+  // https://regex101.com/r/Y9uI1L/1/
+  let inputs = [
+    '/mnt/XBMC/Movies/The Martian (2015).m4v',
+    '/mnt/XBMC/Movies/The Martian.m4v',
+    '/mnt/XBMC/Movies/21 (2012).m4v',
+    '/mnt/XBMC/Movies/21.m4v',
+  ]
+  const regex = new RegExp(/.*\/(.*) \(\d{4}\)\..{3,}/g);
+  for (let i = 0; i < inputs.length; i += 1) {
+    let input = inputs[i];
+    let matches = regex.exec(input);
+    if (matches) {
+      console.log(`1st regex matched. ${matches[1]} is title`)
+    } else {
+      let regex2 = /.*\/(.*)\..{3,}/g;
+      matches = regex2.exec(input);
+      console.log(`2nd regex matched. ${matches[1]} is title`)
+    }
+  }
+};
+
+const main = () => {
+  mdsSdk.initialize({
+    qsUrl: 'http://192.168.5.90:8081',
+    smUrl: 'http://192.168.5.90:8082',
+    fsUrl: 'http://192.168.5.90:8083'
+  });
+  const queueName = 'pass-agent-files-to-scan';
+  const dirs = [
+    { path: '/mnt/XBMC/TV Shows', type: 'show' },
+    { path: '/mnt/XBMC/Movies', type: 'movie' }
+  ];
+
+  const qsClient = mdsSdk.getQueueServiceClient();
+  return qsClient.createQueue(queueName)
+    .catch(() => {})
+    .then(() => qsClient.getQueueLength(queueName))
+    .then((meta) => meta.size === 0 ? scanDirectories(queueName, dirs) : Promise.resolve())
+    .then(() => processQueue(queueName, qsClient));
+};
 
 main();
-
-// https://www.npmjs.com/package/subtitle <-- To adjust sub titles. parse -> resync -> stringify
-// https://stackoverflow.com/questions/12941083/execute-and-get-the-output-of-a-shell-command-in-node-js
-//    ffmpeg -i /XBMC/TV\ Shows/Star\ Trek\ Enterprise/Season\ 1/01\ -\ Broken\ Bow.m4v 2>&1 | sed -n "s/.*, \(.*\) fp.*/\1/p"
+// regexTest();

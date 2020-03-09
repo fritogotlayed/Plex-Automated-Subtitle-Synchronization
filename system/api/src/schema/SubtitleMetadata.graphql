@@ -1,5 +1,6 @@
 type SubtitleMetadata {
     showId: Int
     episodeId: Int
+    movieId: String
     downloadPath: String!
 }

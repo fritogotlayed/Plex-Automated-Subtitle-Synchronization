@@ -21,6 +21,8 @@
     "crypto": "^1.0.1",
     "download": "^7.1.0",
     "got": "^9.6.0",
+    "graphql-request": "^1.8.2",
+    "lodash": "^4.17.15",
     "md5-file": "^4.0.0",
     "opensubtitles-api": "^5.0.1"
   }

@@ -1,0 +1,7 @@
+type MovieSearchResult {
+    title: String!
+    year: String
+    imdbID: String
+    type: String
+    poster: String
+}
