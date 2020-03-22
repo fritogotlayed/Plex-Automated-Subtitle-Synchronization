@@ -5,9 +5,9 @@ const fdk = require('@fnproject/fdk');
 const mds = require('@maddonkeysoftware/mds-sdk-node');
 const OS = require('opensubtitles-api');
 const { GraphQLClient } = require('graphql-request');
-const download = require('download');
 const bunyan = require('bunyan');
 const BunyanLogstashHttp = require('./bunyan-logstash-http');
+const utils = require('./utils');
 const BATCH_SIZE = 10;
 
 const qsClient = mds.getQueueServiceClient(process.env.MDS_QS_URL);
@@ -114,7 +114,7 @@ const findAndStoreSubtitles = async (message) => {
           const filename = `${fileEpisodeNumber} - ${metadata.episodeName}.${data.format}`;
           const localFilePath = `${os.tmpdir()}/${filename}`;
 
-          await download(data.url, os.tmpdir(), { filename });
+          await utils.download(data.url, os.tmpdir(), { filename });
           try {
             await fsClient.createContainer(containerPath);
           } catch {}
@@ -141,7 +141,7 @@ const findAndStoreSubtitles = async (message) => {
                 const filename = `${metadata.title} (${metadata.year}).${data.format}`;
                 const localFilePath = `${os.tmpdir()}/${filename}`;
 
-                return download(data.url, os.tmpdir(), { filename })
+                return utils.download(data.url, os.tmpdir(), { filename })
                   .then(() => fsClient.createContainer(containerPath))
                   .catch(() => {})
                   .then(() => fsClient.uploadFile(containerPath, localFilePath))

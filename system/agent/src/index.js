@@ -2,15 +2,9 @@ const _ = require('lodash');
 const fileDiscovery = require('./file-discovery');
 const mdsSdk = require('@maddonkeysoftware/mds-sdk-node');
 const path = require('path');
-const playground = require('./playground');
 const md5File = require('md5-file/promise');
 const { GraphQLClient } = require('graphql-request');
 
-// const main = () => testGetFileHash();
-// const main = () => testDownloadFile();
-// const main = () => testPlexNowPlaying();
-// const main = () => testSubtitlesSearch();
-// const main = () => playground.testScanDirectory();
 const graphQLClient = new GraphQLClient(process.env.MDS_PASS_URL);
 
 const diffBetweenTimestamps = (dt1, dt2) => {

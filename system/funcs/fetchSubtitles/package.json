@@ -6,10 +6,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@fnproject/fdk": "0.0.15",
-    "@maddonkeysoftware/mds-sdk-node": "0.0.4",
+    "@fnproject/fdk": "0.0.17",
+    "@maddonkeysoftware/mds-sdk-node": "0.0.5",
+    "axios": "^0.19.2",
     "bunyan": "^1.8.12",
-    "download": "^7.1.0",
     "got": "^10.6.0",
     "graphql-request": "^1.8.2",
     "lodash": "^4.17.15",
