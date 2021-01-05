@@ -19,7 +19,7 @@
   "homepage": "https://github.com/fritogotlayed/Plex-Automated-Subtitle-Synchronization#readme",
   "dependencies": {
     "@maddonkeysoftware/mds-sdk-node": "0.0.5",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "axios-cache-adapter": "^2.5.0",
     "bunyan": "^1.8.12",
     "dotenv": "^8.2.0",
