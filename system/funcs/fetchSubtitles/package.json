@@ -8,7 +8,7 @@
   "dependencies": {
     "@fnproject/fdk": "0.0.17",
     "@maddonkeysoftware/mds-sdk-node": "0.0.5",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "bunyan": "^1.8.12",
     "got": "^10.6.0",
     "graphql-request": "^1.8.2",
