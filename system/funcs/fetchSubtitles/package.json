@@ -10,7 +10,7 @@
     "@maddonkeysoftware/mds-sdk-node": "0.0.5",
     "axios": "^0.19.2",
     "bunyan": "^1.8.12",
-    "got": "^10.6.0",
+    "got": "^11.8.5",
     "graphql-request": "^1.8.2",
     "lodash": "^4.17.15",
     "opensubtitles-api": "^5.1.0"
